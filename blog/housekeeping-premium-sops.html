@@ -426,13 +426,7 @@
     }
     @media (max-width: 980px){.glass-slice .row{flex-direction:column; align-items:flex-start} .glass-slice .sub{color:rgba(255,255,255,.84)}}
 
-    /* Parallax suave (desktop) */
-    @media (min-width: 1100px){
-      .glass-slice .img-slot{background-attachment: fixed;}
-    }
-    @media (prefers-reduced-motion: reduce){
-      .glass-slice .img-slot{background-attachment: scroll !important;}
-    }
+    /* Parallax: usamos JavaScript (mais consistente e compatível em mobile). */
 
     /* Cards */
     .card,.svc,.contact-card,.frame{position:relative; overflow:hidden; background: color-mix(in oklab, var(--bg) 98%, transparent);}
@@ -869,15 +863,24 @@
   
 
 <script>
-// Parallax “real” (suave) — funciona em desktop e mobile (iOS incluído)
+// Parallax “real” (suave) — consistente em desktop e mobile.
+// Nota: usamos background-position (em vez de translate) para garantir que o efeito é visível
+// mesmo quando o elemento é absolute + overflow hidden.
   (() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const slices = Array.from(document.querySelectorAll('.glass-slice .img-slot'));
-
     const photoEls = Array.from(document.querySelectorAll('.photo-slot'));
 
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const SLICE_PX = 26;  // intensidade (premium/sutil)
+    const PHOTO_PX = 10;
+
+    // Mantém escala fixa para criar “profundidade”, e desloca o background.
+    slices.forEach(el => {
+      el.style.transform = 'translate3d(0,0,0) scale(1.06)';
+      el.style.willChange = 'background-position, transform';
+    });
 
     let ticking = false;
     const onScroll = () => {
@@ -885,19 +888,20 @@
       ticking = true;
       requestAnimationFrame(() => {
         const vh = window.innerHeight || 800;
-        // Glass slices: stronger parallax
+
         slices.forEach(el => {
           const r = el.getBoundingClientRect();
-          const p = 1 - clamp((r.top + r.height/2) / vh, 0, 2); // rough progress
-          const y = (p - 0.5) * 26; // px
-          el.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0) scale(1.06)`;
+          const center = r.top + r.height / 2;
+          const t = clamp(center / vh, 0, 1);
+          const y = (t - 0.5) * SLICE_PX;
+          el.style.backgroundPosition = `50% calc(50% + ${y.toFixed(1)}px)`;
         });
 
-        // Photo slots: subtle parallax on the block itself
         photoEls.forEach(el => {
           const r = el.getBoundingClientRect();
-          const p = 1 - clamp((r.top + r.height/2) / vh, 0, 2);
-          const y = (p - 0.5) * 10;
+          const center = r.top + r.height / 2;
+          const t = clamp(center / vh, 0, 1);
+          const y = (t - 0.5) * PHOTO_PX;
           el.style.backgroundPosition = `50% calc(50% + ${y.toFixed(1)}px)`;
         });
 
